@@ -81,8 +81,8 @@ void loop()
         delay(600);
         servoToggle.write(servoLocationHome);
 
-        EEPROM.write(128, servoLocationPush);  
-        EEPROM.commit();    //Store data to EEPROM
+        // EEPROM.write(128, servoLocationPush);  
+        // EEPROM.commit();    //Store data to EEPROM
       }
     }
   }

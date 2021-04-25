@@ -1,0 +1,21 @@
+#include <Arduino.h>
+
+int pinFlash = 2;
+int pinFlash2 = 14;
+
+// the setup function runs once when you press reset or power the board
+void setup() {
+  // initialize digital pin LED_BUILTIN as an output.
+  pinMode(pinFlash, OUTPUT);
+  pinMode(pinFlash2, OUTPUT);
+}
+
+// the loop function runs over and over again forever
+void loop() {
+  digitalWrite(pinFlash, HIGH);   // turn the LED on (HIGH is the voltage level)
+  digitalWrite(pinFlash2, HIGH);
+  delay(1000);                       // wait for a second
+  digitalWrite(pinFlash, LOW);    // turn the LED off by making the voltage LOW
+  digitalWrite(pinFlash2, LOW);
+  delay(1000);                       // wait for a second
+}
