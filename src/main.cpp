@@ -35,7 +35,7 @@ int servoDecreaseBrightness = 75;
 unsigned long servoRotateTimeConstant = 100;    //in milliseconds
 
 //-------PIN I/O-------
-int MOSFET = 13; //7
+// int MOSFET = 13; //7
 
 
 //-------LIGHT-------
@@ -59,9 +59,6 @@ void setup()
   pinMode(encoderPinB, INPUT);
   pinMode(encoderPinBtn, INPUT_PULLUP);
 
-  pinMode(MOSFET, OUTPUT);
-
-  // servoRotate.attach(servoPinRotate);
   servoPush.attach(servoPinPush);
   servoPush.write(servoLocationHome);
   servoPush.detach();
@@ -69,14 +66,8 @@ void setup()
   servoRotate.write(90);
   servoRotate.detach();
 
-  // EEPROM.begin(512);  //Initialize EEPROM
-  // Serial.print("The stored value is: ");
-  // Serial.println(EEPROM.read(128));
-  // servoLocationPush = (int)EEPROM.read(128);
-
   btnState = digitalRead(encoderPinBtn);
   currentStateA = digitalRead(encoderPinA);
-  digitalWrite(MOSFET, HIGH);
 
 }
 
@@ -110,7 +101,7 @@ void checkEncoderRotation()
 {
   currentStateA = digitalRead(encoderPinA);
   
-  if(currentStateA != prevStateA) // || (!currentReadingB && prevStateB))
+  if(currentStateA != prevStateA)
   {
     if(digitalRead(encoderPinB) != currentStateA)
       encoderVal += encoderClickValue;
@@ -118,11 +109,11 @@ void checkEncoderRotation()
       encoderVal -= encoderClickValue;
 
     Serial.println(encoderVal);
-    msWaitServoTimer = millis();
-    goingToRotate = true;
+    msWaitServoTimer = millis();    //reset timer each time encoder has rotated
+    goingToRotate = true;     //flag that the brightness is going to change
   }
 
-  if(((millis() - msWaitServoTimer) > msWaitBeforeServoStart) && goingToRotate)
+  if(((millis() - msWaitServoTimer) > msWaitBeforeServoStart) && goingToRotate)   //if encoder has stopped rotating and the brightness is going to change
   {
     lightChangeBrightness(encoderVal);     //change brightness
     goingToRotate = false; 
@@ -130,7 +121,6 @@ void checkEncoderRotation()
   }
 
   prevStateA = currentStateA;
-
 }
 
 void lightSetState(bool state)
@@ -150,20 +140,28 @@ void lightSetState(bool state)
 
 void lightChangeBrightness(int change)
 {
+  if(lightBrightness + change > 100)    //if the encoder is rotated to increase brightness beyond 100
+    lightSetBrightness(100);          //set brightness to 100
+  else if(lightBrightness + change < 0)
+    lightSetBrightness(0);
+
   servoRotate.attach(servoPinRotate);
-  // lightBrightness
   if(change > 0)
     servoRotate.write(servoIncreaseBrightness);
   else 
     servoRotate.write(servoDecreaseBrightness);
-  delay(abs(change)*servoRotateTimeConstant);
-  servoRotate.write(90);
-  lightBrightness += change;
+  delay(abs(change)*servoRotateTimeConstant);     //times for starting the motor to a time corresponding to the changing brightness value
+
+  servoRotate.write(90);    //stops the motor
   servoRotate.detach();
+
+  lightBrightness += change;    //updates global brightness variable
 }
 
 void lightSetBrightness(unsigned int brightness)
 {
-  lightChangeBrightness(lightBrightness - brightness);
+  if(brightness > 100)
+    brightness = 100;
+  lightChangeBrightness(brightness - lightBrightness);
 }
 
