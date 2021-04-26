@@ -7,7 +7,7 @@
 int encoderPinA = 14;   //5  D5
 int encoderPinB = 16;   //4  D0
 int encoderVal = 0;
-int encoderClickValue = 5;
+int encoderClickValue = 2;
 bool prevStateA = true;
 bool currentStateA;
 
@@ -18,13 +18,18 @@ int prevBtnReading = true;   // the previous nowReading from the input pin
 unsigned long msDebounceTimer = 0;  // the last time the output pin was toggled
 const unsigned long debounceDelay = 100;    // the debounce time; increase if the output flickers
 
-//-------SERVO CONFIG-------
-int servoPinRotate = 5; //14
+//-------SERVO PUSH CONFIG-------
 int servoPinPush = 4; //13
-Servo servoRotate;
 Servo servoPush;
 int servoLocationPush = 160;    //from testing: 175;
 int servoLocationHome = 90;
+
+//-------SERVO ROTATE CONFIG-------
+int servoPinRotate = 5; //14
+Servo servoRotate;
+int servoIncreaseBrightness = 105;
+int servoDecreaseBrightness = 75;
+unsigned long servoRotateTimeConstant = 100;    //in milliseconds
 
 //-------PIN I/O-------
 int MOSFET = 13; //7
@@ -38,8 +43,8 @@ unsigned int lightBrightness = 0;
 //-------FUNCTION PROTOTYPES-------
 void checkEncoderBtn();
 void checkEncoderRotation();
-// void handleLight(bool, int);
 void lightSetState(bool);
+void lightSetBrightness(unsigned int);
 
 void setup()
 {
@@ -52,9 +57,10 @@ void setup()
 
   pinMode(MOSFET, OUTPUT);
 
-  servoRotate.attach(servoPinRotate);
+  // servoRotate.attach(servoPinRotate);
   servoPush.attach(servoPinPush);
   servoPush.write(servoLocationHome);
+  servoPush.detach();
 
   // EEPROM.begin(512);  //Initialize EEPROM
   // Serial.print("The stored value is: ");
@@ -105,7 +111,7 @@ void checkEncoderRotation()
       encoderVal -= encoderClickValue;
 
     Serial.println(encoderVal);
-    //change brightness
+    lightChangeBrightness(encoderVal);     //change brightness
   }
   prevStateA = currentStateA;
 
@@ -122,13 +128,33 @@ void lightSetState(bool state)
 {
   if(state != lightState)
   {
-    digitalWrite(MOSFET, HIGH);   //turns on power to the servos
+    // digitalWrite(MOSFET, HIGH);   //turns on power to the servos
+    servoPush.attach(servoPinPush);
     servoPush.write(servoLocationPush);
     delay(500);
     servoPush.write(servoLocationHome);
     lightState = state;
-    digitalWrite(MOSFET, LOW);    //turns off power to the servos
+    // digitalWrite(MOSFET, LOW);    //turns off power to the servos
+    servoPush.detach();
   }
+}
+
+void lightChangeBrightness(int change)
+{
+  servoRotate.attach(servoPinRotate);
+  // lightBrightness
+  if(change > 0)
+    servoRotate.write(servoIncreaseBrightness);
+  else 
+    servoRotate.write(servoDecreaseBrightness);
+  delay(abs(change)*servoRotateTimeConstant);
+  lightBrightness += change;
+  servoRotate.detach();
+}
+
+void lightSetBrightness(unsigned int brightness)
+{
+  lightChangeBrightness(lightBrightness - brightness);
 }
 
 
