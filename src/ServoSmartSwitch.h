@@ -98,7 +98,7 @@ float globalLightBrightness = 0;
     float brightnessTemp;
     state->current_values_as_brightness(&brightnessTemp);
     // Convert to 0-100
-    int brightness = floor(brightnessPercent * 100);
+    int brightness = floor(brightnessTemp * 100);
     // brightness2 = brightness;
     lightSetBrightness(brightness);
 
