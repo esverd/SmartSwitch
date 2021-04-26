@@ -1,108 +1,121 @@
 #include <Arduino.h>
 #include <Servo.h>
-#include <EEPROM.h>
+// #include <EEPROM.h>
 
 
 
-// int encoderVal = 0;
-// int encoderPinA = 5;
-// int encoderPinB = 4;
-// bool stateA = false;
-// bool encoderAfirst = false;
 
+int encoderPinA = 14; //5  D5
+int encoderPinB = 16; //4  D0
+int encoderPinBtn = 12; //6  D6
 
-int encoderPinA = 5;
-int encoderPinB = 4;
 int encoderVal = 90;
-int encoderClickCalue = 10;
+int encoderClickValue = 5;
 bool prevStateA = false;
-bool currentStateA = false;
+bool currentStateA;
 
+int servoPinRotate = 4; //14
+int servoPinPush = 5; //13
 
-int encoderPinBtn = 2;
-const int buttonPin = 2;    // the number of the pushbutton pin
+int MOSFET = 13; //7
+
 int currentBtnState;             // the current currentReading from the input pin
 int prevBtnState = LOW;   // the previous currentReading from the input pin
-unsigned long prevDebounceTime = 0;  // the last time the output pin was toggled
-unsigned long debounceDelay = 100;    // the debounce time; increase if the output flickers
+unsigned long msDebounceTimer = 0;  // the last time the output pin was toggled
+const unsigned long debounceDelay = 100;    // the debounce time; increase if the output flickers
 
 
 Servo servoRotate;
-Servo servoToggle;
+Servo servoPush;
 int servoLocationPush = 175;
 int servoLocationHome = 90;
+
+
+void checkEncoderBtn();
+void checkEncoderRotation();
+void handleLight(bool, int);
 
 void setup()
 {
   Serial.begin(115200);
   Serial.println("Starting");
 
-  pinMode(encoderPinBtn, INPUT_PULLUP);
   pinMode(encoderPinA, INPUT_PULLUP);
   pinMode(encoderPinB, INPUT_PULLUP);
+  pinMode(encoderPinBtn, INPUT_PULLUP);
 
-  pinMode(0, INPUT);
+  pinMode(MOSFET, OUTPUT);
 
-  servoRotate.attach(14);
-  servoToggle.attach(12);
-  servoToggle.write(servoLocationHome);
+  servoRotate.attach(servoPinRotate);
+  servoPush.attach(servoPinPush);
+  servoPush.write(servoLocationHome);
 
-  EEPROM.begin(512);  //Initialize EEPROM
-  Serial.print("The stored value is: ");
-  Serial.println(EEPROM.read(128));
-  servoLocationPush = (int)EEPROM.read(128);
+  // EEPROM.begin(512);  //Initialize EEPROM
+  // Serial.print("The stored value is: ");
+  // Serial.println(EEPROM.read(128));
+  // servoLocationPush = (int)EEPROM.read(128);
 
 }
 
 void loop() 
 {
+  checkEncoderBtn();
+  checkEncoderRotation();
+  
+}
 
-  int analogVal = analogRead(0);
-  int servoLocationPush = map(analogVal, 0, 1023, 0, 180);
-  servoToggle.write(servoLocationPush);
-  // Serial.println(mappedVal);
+void checkEncoderBtn()
+{
+  bool currentReading = digitalRead(encoderPinBtn);    //read the state of the switch into a local variable
 
-  int currentReading = digitalRead(buttonPin);    // read the state of the switch into a local variable:
+  if (currentReading != prevBtnState)   //ff the switch changed, due to noise or pressing, reset the debouncing timer
+    msDebounceTimer = millis();
 
-  if (currentReading != prevBtnState)   // If the switch changed, due to noise or pressing, reset the debouncing timer
-    prevDebounceTime = millis();
-
-  if ((millis() - prevDebounceTime) > debounceDelay)  // whatever the currentReading is at, it's been there for longer than the debounce delay, so take it as the actual current state:
+  if ((millis() - msDebounceTimer) > debounceDelay)  //whatever the currentReading is at, it's been there for longer than the debounce delay, so take it as the actual current state
   {
-    if (currentReading != currentBtnState)    // if the button state has changed:
+    if (currentReading != currentBtnState)    //if the button state has changed:
     {
       currentBtnState = currentReading;
 
-      if(!currentBtnState)
-      {
-        servoToggle.write(servoLocationHome);
-        delay(600);
-        servoToggle.write(servoLocationPush);
-        delay(600);
-        servoToggle.write(servoLocationHome);
+      Serial.print("Button state = ");
+      Serial.println(currentBtnState);
 
-        // EEPROM.write(128, servoLocationPush);  
-        // EEPROM.commit();    //Store data to EEPROM
-      }
+      //toggle servo
     }
   }
-  prevBtnState = currentReading;    // save the currentReading. Next time through the loop, it'll be the prevBtnState:
-
-
-  currentStateA = digitalRead(encoderPinA);
-  if (prevStateA && !currentStateA)     //if pinA has toggled 
-  {
-    if (!digitalRead(encoderPinB)) 
-      encoderVal += encoderClickCalue;
-    else 
-      encoderVal -= encoderClickCalue;
-    Serial.println (encoderVal);
-    servoRotate.write(encoderVal);
-    // servoToggle.write(encoderVal);
-  }
-  prevStateA = currentStateA;
+  prevBtnState = currentReading;    //save the currentReading. Next time through the loop, it'll be the prevBtnState:
 }
 
+void checkEncoderRotation()
+{
+  currentStateA = digitalRead(encoderPinA);
+
+  if(currentStateA != prevStateA) // || (!currentReadingB && prevStateB))
+  {
+    if(digitalRead(encoderPinB) != currentStateA)
+      encoderVal += encoderClickValue;
+    else
+      encoderVal -= encoderClickValue;
+
+    Serial.println(encoderVal);
+    //change brightness
+  }
+  prevStateA = currentStateA;
+
+}
+
+void handleLight(bool on, int value)
+{
+  // int servoLocationPush = 175;
+  // int servoLocationHome = 90;
+  // servoToggle.write(servoLocationPush);
+}
+
+
+//increaseBrightness
+//toggle light
+//set to state
+//set to brightness
 
 
 // const int ledPin = 13;      // the number of the LED pin
