@@ -3,37 +3,43 @@
 // #include <EEPROM.h>
 
 
-
-
-int encoderPinA = 14; //5  D5
-int encoderPinB = 16; //4  D0
-int encoderPinBtn = 12; //6  D6
-
-int encoderVal = 90;
+//-------ROTARY ENCODER-------
+int encoderPinA = 14;   //5  D5
+int encoderPinB = 16;   //4  D0
+int encoderVal = 0;
 int encoderClickValue = 5;
 bool prevStateA = false;
 bool currentStateA;
 
-int servoPinRotate = 4; //14
-int servoPinPush = 5; //13
-
-int MOSFET = 13; //7
-
+//-------ENCODER BUTTON-------
+int encoderPinBtn = 12; //6  D6
 int currentBtnState;             // the current currentReading from the input pin
-int prevBtnState = LOW;   // the previous currentReading from the input pin
+int prevBtnState = true;   // the previous currentReading from the input pin
 unsigned long msDebounceTimer = 0;  // the last time the output pin was toggled
 const unsigned long debounceDelay = 100;    // the debounce time; increase if the output flickers
 
-
+//-------SERVO CONFIG-------
+int servoPinRotate = 5; //14
+int servoPinPush = 4; //13
 Servo servoRotate;
 Servo servoPush;
-int servoLocationPush = 175;
+int servoLocationPush = 160;    //from testing: 175;
 int servoLocationHome = 90;
 
+//-------PIN I/O-------
+int MOSFET = 13; //7
 
+
+//-------LIGHT-------
+bool lightState = false;
+unsigned int lightBrightness = 0;
+
+
+//-------FUNCTION PROTOTYPES-------
 void checkEncoderBtn();
 void checkEncoderRotation();
-void handleLight(bool, int);
+// void handleLight(bool, int);
+void lightSetState(bool);
 
 void setup()
 {
@@ -54,6 +60,9 @@ void setup()
   // Serial.print("The stored value is: ");
   // Serial.println(EEPROM.read(128));
   // servoLocationPush = (int)EEPROM.read(128);
+
+  currentBtnState = digitalRead(encoderPinBtn);
+  digitalWrite(MOSFET, HIGH);
 
 }
 
@@ -80,7 +89,7 @@ void checkEncoderBtn()
       Serial.print("Button state = ");
       Serial.println(currentBtnState);
 
-      //toggle servo
+      lightSetState(!lightState);    //toggle the light
     }
   }
   prevBtnState = currentReading;    //save the currentReading. Next time through the loop, it'll be the prevBtnState:
@@ -109,6 +118,30 @@ void handleLight(bool on, int value)
   // int servoLocationPush = 175;
   // int servoLocationHome = 90;
   // servoToggle.write(servoLocationPush);
+}
+
+void lightSetState(bool state)
+{
+  if(state != lightState)
+  {
+    digitalWrite(MOSFET, HIGH);   //turns on power to the servos
+    servoPush.write(servoLocationPush);
+    delay(500);
+    servoPush.write(servoLocationHome);
+    // delay(100);
+    // for (int i = servoLocationHome; i <= servoLocationPush; i++)
+    // {
+    //   servoPush.write(i);
+    // }
+    // delay(500);
+    // for (int i = servoLocationPush; i >= servoLocationHome; i--)
+    // {
+    //   servoPush.write(i);
+    // }
+    
+    lightState = state;
+    digitalWrite(MOSFET, LOW);    //turns off power to the servos
+  }
 }
 
 
