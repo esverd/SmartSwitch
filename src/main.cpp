@@ -8,13 +8,13 @@ int encoderPinA = 14;   //5  D5
 int encoderPinB = 16;   //4  D0
 int encoderVal = 0;
 int encoderClickValue = 5;
-bool prevStateA = false;
+bool prevStateA = true;
 bool currentStateA;
 
 //-------ENCODER BUTTON-------
 int encoderPinBtn = 12; //6  D6
-int currentBtnState;             // the current currentReading from the input pin
-int prevBtnState = true;   // the previous currentReading from the input pin
+int btnState;             // the current nowReading from the input pin. used for debugging can be removed later
+int prevBtnReading = true;   // the previous nowReading from the input pin
 unsigned long msDebounceTimer = 0;  // the last time the output pin was toggled
 const unsigned long debounceDelay = 100;    // the debounce time; increase if the output flickers
 
@@ -47,7 +47,7 @@ void setup()
   Serial.println("Starting");
 
   pinMode(encoderPinA, INPUT_PULLUP);
-  pinMode(encoderPinB, INPUT_PULLUP);
+  pinMode(encoderPinB, INPUT);
   pinMode(encoderPinBtn, INPUT_PULLUP);
 
   pinMode(MOSFET, OUTPUT);
@@ -61,7 +61,8 @@ void setup()
   // Serial.println(EEPROM.read(128));
   // servoLocationPush = (int)EEPROM.read(128);
 
-  currentBtnState = digitalRead(encoderPinBtn);
+  btnState = digitalRead(encoderPinBtn);
+  currentStateA = digitalRead(encoderPinA);
   digitalWrite(MOSFET, HIGH);
 
 }
@@ -75,24 +76,21 @@ void loop()
 
 void checkEncoderBtn()
 {
-  bool currentReading = digitalRead(encoderPinBtn);    //read the state of the switch into a local variable
+  bool nowReading = digitalRead(encoderPinBtn);    //read the state of the switch into a local variable
 
-  if (currentReading != prevBtnState)   //ff the switch changed, due to noise or pressing, reset the debouncing timer
-    msDebounceTimer = millis();
+  if (nowReading != prevBtnReading)   //if the reading of the button has changed due to noise or pressing
+    msDebounceTimer = millis();       //start debounce timer
 
-  if ((millis() - msDebounceTimer) > debounceDelay)  //whatever the currentReading is at, it's been there for longer than the debounce delay, so take it as the actual current state
+  if (((millis() - msDebounceTimer) > debounceDelay) && !nowReading)  //if debounce timer is up and button is still being pressed
   {
-    if (currentReading != currentBtnState)    //if the button state has changed:
-    {
-      currentBtnState = currentReading;
-
-      Serial.print("Button state = ");
-      Serial.println(currentBtnState);
-
-      lightSetState(!lightState);    //toggle the light
-    }
+    while(!digitalRead(encoderPinBtn)) {}    //wait for button to be released
+    btnState = !btnState;    //toggle the button state
+    Serial.print("Button state = ");
+    Serial.println(btnState);
+    lightSetState(!lightState);    //toggle the light
+    msDebounceTimer = millis();       //restart debounce timer to break out of statement
   }
-  prevBtnState = currentReading;    //save the currentReading. Next time through the loop, it'll be the prevBtnState:
+  prevBtnReading = nowReading;    //save the nowReading. Next time through the loop, it'll be the prevBtnReading:
 }
 
 void checkEncoderRotation()
@@ -128,17 +126,6 @@ void lightSetState(bool state)
     servoPush.write(servoLocationPush);
     delay(500);
     servoPush.write(servoLocationHome);
-    // delay(100);
-    // for (int i = servoLocationHome; i <= servoLocationPush; i++)
-    // {
-    //   servoPush.write(i);
-    // }
-    // delay(500);
-    // for (int i = servoLocationPush; i >= servoLocationHome; i--)
-    // {
-    //   servoPush.write(i);
-    // }
-    
     lightState = state;
     digitalWrite(MOSFET, LOW);    //turns off power to the servos
   }
