@@ -9,7 +9,7 @@ class ServoSmartSwitch : public Component, public LightOutput {
   int encoderPinA = 14;   //5  D5
   int encoderPinB = 16;   //4  D0
   int encoderVal = 0;
-  int encoderClickValue = 2;
+  int encoderClickValue = 1;
   bool prevStateA = true;
   bool currentStateA;
   unsigned long msWaitBeforeServoStart = 500;
@@ -32,13 +32,13 @@ class ServoSmartSwitch : public Component, public LightOutput {
   //-------SERVO ROTATE CONFIG-------
   int servoPinRotate = 5; //14
   Servo servoRotate;
-  int servoIncreaseBrightness = 105;
-  int servoDecreaseBrightness = 75;
+  int servoIncreaseBrightness = 100;
+  int servoDecreaseBrightness = 80;
   unsigned long servoRotateTimeConstant = 100;    //in milliseconds
 
   //-------LIGHT-------
   bool lightState = false;
-  unsigned int lightBrightness = 0;
+  float lightBrightness = 0;
 
   //-------FUNCTION PROTOTYPES-------
   //remove function prototypes
@@ -80,11 +80,21 @@ class ServoSmartSwitch : public Component, public LightOutput {
 
   void write_state(LightState *state) override {
     // This will be called by the light to get a new state to be written.
-    float red, green, blue;
+    // float red, green, blue;
     // use any of the provided current_values methods
-    state->current_values_as_rgb(&red, &green, &blue);
+    // state->current_values_as_rgb(&red, &green, &blue);
     // Write red, green and blue to HW
     // ...
+    // float brightness2;
+    state->current_values_as_brightness(&lightBrightness);
+    // brightness2 = brightness;
+    lightSetBrightness(lightBrightness);
+
+  }
+
+  LightCall LightState::turn_on() override { 
+    lightSetState(true);
+    return this->make_call().set_state(true); 
   }
 
   void checkEncoderBtn()

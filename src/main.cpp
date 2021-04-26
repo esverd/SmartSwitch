@@ -7,7 +7,7 @@
 int encoderPinA = 14;   //5  D5
 int encoderPinB = 16;   //4  D0
 int encoderVal = 0;
-int encoderClickValue = 2;
+int encoderClickValue = 1;
 bool prevStateA = true;
 bool currentStateA;
 unsigned long msWaitBeforeServoStart = 500;
@@ -30,8 +30,8 @@ int servoLocationHome = 90;
 //-------SERVO ROTATE CONFIG-------
 int servoPinRotate = 5; //14
 Servo servoRotate;
-int servoIncreaseBrightness = 105;
-int servoDecreaseBrightness = 75;
+int servoIncreaseBrightness = 100;
+int servoDecreaseBrightness = 80;
 unsigned long servoRotateTimeConstant = 100;    //in milliseconds
 
 //-------PIN I/O-------
@@ -40,15 +40,15 @@ unsigned long servoRotateTimeConstant = 100;    //in milliseconds
 
 //-------LIGHT-------
 bool lightState = false;
-unsigned int lightBrightness = 0;
+unsigned float lightBrightness = 0;
 
 
 //-------FUNCTION PROTOTYPES-------
 void checkEncoderBtn();
 void checkEncoderRotation();
 void lightSetState(bool);
-void lightChangeBrightness(int);
-void lightSetBrightness(unsigned int);
+void lightChangeBrightness(float);
+void lightSetBrightness(unsigned float);
 
 void setup()
 {
@@ -138,7 +138,7 @@ void lightSetState(bool state)
   }
 }
 
-void lightChangeBrightness(int change)
+void lightChangeBrightness(float change)
 {
   if(lightBrightness + change > 100)    //if the encoder is rotated to increase brightness beyond 100
     lightSetBrightness(100);          //set brightness to 100
@@ -158,7 +158,7 @@ void lightChangeBrightness(int change)
   lightBrightness += change;    //updates global brightness variable
 }
 
-void lightSetBrightness(unsigned int brightness)
+void lightSetBrightness(unsigned float brightness)
 {
   if(brightness > 100)
     brightness = 100;

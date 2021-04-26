@@ -8,8 +8,8 @@ esphome:
     - ServoSmartSwitch.h
     
 wifi:
-  ssid: /config !secret ssid
-  password: /config !secret wifiPassword
+  ssid: !secret ssid
+  password: !secret wifiPassword
 
 captive_portal:
 
