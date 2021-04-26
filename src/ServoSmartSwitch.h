@@ -67,6 +67,7 @@ float globalLightBrightness = 0;
   // currentStateA = digitalRead(encoderPinA);
 
     // register_service(&ServoSmartSwitch::turn_on, true);
+    // ServoSmartSwitch.set_default_transition_length(10000);
 
   }
 
@@ -92,6 +93,7 @@ float globalLightBrightness = 0;
     // state->current_values_as_rgb(&red, &green, &blue);
     // Write red, green and blue to HW
     // ...
+    state->set_default_transition_length(0);
     // float brightness2;
     state->current_values_as_brightness(&globalLightBrightness);
     // brightness2 = brightness;
@@ -101,6 +103,8 @@ float globalLightBrightness = 0;
     //if state has changed, call function for servo push
 
   }
+
+  
 
   // LightCall LightState::turn_on() override { 
   //   lightSetState(true);
@@ -189,6 +193,9 @@ float globalLightBrightness = 0;
 
   void lightSetBrightness(float brightness)
   {
+    float orig = brightness;
+
+    brightness *= 100;
     if(brightness >= 100)
       brightness = 100;
     else if(brightness < 0)
@@ -213,7 +220,11 @@ float globalLightBrightness = 0;
     
 
     Serial.print("Light state: ");
-    Serial.println(globalLightState);
+    Serial.print(globalLightState);
+    Serial.print("    Brightness given: ");
+    Serial.print(orig);
+    Serial.print("    Brightness global: ");
+    Serial.println(globalLightBrightness);
     
   }
 
