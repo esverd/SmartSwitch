@@ -95,12 +95,23 @@ float globalLightBrightness = 0;
     // ...
     state->set_default_transition_length(0);
     // float brightness2;
-    state->current_values_as_brightness(&globalLightBrightness);
+    float brightnessTemp;
+    state->current_values_as_brightness(&brightnessTemp);
+    // Convert to 0-100
+    int brightness = floor(brightnessPercent * 100);
     // brightness2 = brightness;
-    lightSetBrightness(globalLightBrightness);
+    lightSetBrightness(brightness);
 
     // state->
     //if state has changed, call function for servo push
+
+    // char buffer[140];
+    // snprintf_P(buffer, sizeof(buffer), PSTR("AT+UPDATE=\"sequence\":\"%d%03d\",\"switch\":\"%s\",\"light_type\":1,\"colorR\":%d,\"colorG\":%d,\"colorB\":%d,\"bright\":%d,\"mode\":%d"),
+    // millis(), millis()%1000,
+    // ledState ? "on" : "off",
+    // redValue, greenValue, blueValue,
+    // brightness,
+    // SONOFF_L1_MODE_COLORFUL);
 
   }
 
@@ -195,7 +206,7 @@ float globalLightBrightness = 0;
   {
     float orig = brightness;
 
-    brightness *= 100;
+    // brightness *= 100;
     if(brightness >= 100)
       brightness = 100;
     else if(brightness < 0)
