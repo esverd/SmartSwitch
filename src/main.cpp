@@ -9,7 +9,7 @@ int encoderPinB = 16;   //4  D0
 int encoderVal = 0;
 int encoderClickValue = 1;
 bool prevStateA = true;
-bool currentStateA;
+bool currentStateA = true;
 unsigned long msWaitBeforeServoStart = 500;
 unsigned long msWaitServoTimer = 0;
 bool goingToRotate = false;
@@ -39,8 +39,8 @@ unsigned long servoRotateTimeConstant = 100;    //in milliseconds
 
 
 //-------LIGHT-------
-bool lightState = false;
-unsigned float lightBrightness = 0;
+bool globalLightState = false;
+float globalLightBrightness = 0;
 
 
 //-------FUNCTION PROTOTYPES-------
@@ -48,7 +48,8 @@ void checkEncoderBtn();
 void checkEncoderRotation();
 void lightSetState(bool);
 void lightChangeBrightness(float);
-void lightSetBrightness(unsigned float);
+void lightSetBrightness(float);
+void readSerial();
 
 void setup()
 {
@@ -67,7 +68,7 @@ void setup()
   servoRotate.detach();
 
   btnState = digitalRead(encoderPinBtn);
-  currentStateA = digitalRead(encoderPinA);
+  // currentStateA = digitalRead(encoderPinA);
 
 }
 
@@ -75,6 +76,8 @@ void loop()
 {
   checkEncoderBtn();
   checkEncoderRotation();
+
+  readSerial();
   
 }
 
@@ -91,7 +94,7 @@ void checkEncoderBtn()
     btnState = !btnState;    //toggle the button state
     Serial.print("Button state = ");
     Serial.println(btnState);
-    lightSetState(!lightState);    //toggle the light
+    lightSetState(!globalLightState);    //toggle the light
     msDebounceTimer = millis();       //restart debounce timer to break out of statement
   }
   prevBtnReading = nowReading;    //save the nowReading. Next time through the loop, it'll be the prevBtnReading:
@@ -125,24 +128,24 @@ void checkEncoderRotation()
 
 void lightSetState(bool state)
 {
-  if(state != lightState)
+  if(state != globalLightState)   //if light is getting toggled. ignore if state command is same as current state
   {
     // digitalWrite(MOSFET, HIGH);   //turns on power to the servos
     servoPush.attach(servoPinPush);
     servoPush.write(servoLocationPush);
-    delay(500);
+    delay(600);
     servoPush.write(servoLocationHome);
-    lightState = state;
     // digitalWrite(MOSFET, LOW);    //turns off power to the servos
     servoPush.detach();
+    globalLightState = state;
   }
 }
 
 void lightChangeBrightness(float change)
 {
-  if(lightBrightness + change > 100)    //if the encoder is rotated to increase brightness beyond 100
+  if(globalLightBrightness + change > 100)    //if the encoder is rotated to increase brightness beyond 100
     lightSetBrightness(100);          //set brightness to 100
-  else if(lightBrightness + change < 0)
+  else if(globalLightBrightness + change < 0)
     lightSetBrightness(0);
 
   servoRotate.attach(servoPinRotate);
@@ -155,13 +158,78 @@ void lightChangeBrightness(float change)
   servoRotate.write(90);    //stops the motor
   servoRotate.detach();
 
-  lightBrightness += change;    //updates global brightness variable
+  globalLightBrightness += change;    //updates global brightness variable
 }
 
-void lightSetBrightness(unsigned float brightness)
+void lightSetBrightness(float brightness)
 {
-  if(brightness > 100)
+  if(brightness >= 100)
     brightness = 100;
-  lightChangeBrightness(brightness - lightBrightness);
+  else if(brightness < 0)
+    brightness = 0;
+  
+  if((brightness == 0))       //if brightness is set to 0 and the light is currently on
+  {
+    lightSetState(false);
+    // globalLightState = false;
+  }
+  else if((brightness != globalLightBrightness) || ((brightness > 0) && !globalLightState) )   //if brightness has changed while light is on, OR, if light is off when a brightness value is gived
+  {
+    lightSetState(true);    //make sure light is on
+    lightChangeBrightness(brightness - globalLightBrightness);
+  }
+
+    //break; dont rotate servo
+
+  //if OFF and changed, turn on, adjust lights
+  //if ON and less than 0, turn off
+  //update global value
+  
+
+  Serial.print("Light state: ");
+  Serial.println(globalLightState);
+  
 }
 
+String cmdBuffer = ""; 
+
+void readSerial()
+{
+  //if serial available
+  //send start signal to receive new commands
+  //store commands in buffer
+  //\n is end of command
+  //process buffer by handling GCODE
+  //loop
+
+  float inVal;
+
+  if(Serial.available() > 0)    //if serial communication is avalable
+  {
+    char inChar = Serial.read();    //reads next character
+
+    if(inChar == '\n')    //if string ended with new line process command
+    {
+      inVal = cmdBuffer.toFloat();
+      lightSetBrightness(inVal);
+      // handleGCODE();    //processes the received commans
+      Serial.print("Given brightness: ");   //prints GO to signal the arduino is ready for the next command
+      Serial.println(inVal);
+      cmdBuffer = "";
+    }
+    else
+      cmdBuffer += inChar;    //stores the incomming character string
+  }
+
+}
+
+// if(cmdBuffer.indexOf("G1") != -1 || cmdBuffer.indexOf("G01") != -1)
+//   {
+//     if(cmdBuffer.indexOf("X") != -1 || cmdBuffer.indexOf("Y") != -1 || cmdBuffer.indexOf("Z") != -1)
+//       G1xyz();   //moves the robot to the given coordinates
+//     else if(cmdBuffer.indexOf("L") != -1 || cmdBuffer.indexOf("R") != -1)
+//       G1lr();
+//   }
+
+//   if(yVal.toFloat() != -1)
+//         currentY = yVal.toFloat();

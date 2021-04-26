@@ -61,6 +61,9 @@ class ServoSmartSwitch : public Component, public LightOutput {
 
     btnState = digitalRead(encoderPinBtn);
     currentStateA = digitalRead(encoderPinA);
+
+    register_service(&ServoSmartSwitch::turn_on, true);
+
   }
 
   void loop() override {
@@ -88,14 +91,17 @@ class ServoSmartSwitch : public Component, public LightOutput {
     // float brightness2;
     state->current_values_as_brightness(&lightBrightness);
     // brightness2 = brightness;
-    lightSetBrightness(lightBrightness);
+    state->lightSetBrightness(lightBrightness);
+
+    state->
+    //if state has changed, call function for servo push
 
   }
 
-  LightCall LightState::turn_on() override { 
-    lightSetState(true);
-    return this->make_call().set_state(true); 
-  }
+  // LightCall LightState::turn_on() override { 
+  //   lightSetState(true);
+  //   return this->make_call().set_state(true); 
+  // }
 
   void checkEncoderBtn()
   {
