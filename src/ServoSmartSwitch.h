@@ -11,7 +11,7 @@ class ServoSmartSwitch : public Component, public LightOutput {
   int encoderVal = 0;
   int encoderClickValue = 1;
   bool prevStateA = true;
-  bool currentStateA;
+  bool currentStateA = true;
   unsigned long msWaitBeforeServoStart = 500;
   unsigned long msWaitServoTimer = 0;
   bool goingToRotate = false;
@@ -36,9 +36,13 @@ class ServoSmartSwitch : public Component, public LightOutput {
   int servoDecreaseBrightness = 80;
   unsigned long servoRotateTimeConstant = 100;    //in milliseconds
 
-  //-------LIGHT-------
-  bool lightState = false;
-  float lightBrightness = 0;
+  //-------PIN I/O-------
+  // int MOSFET = 13; //7
+
+
+//-------LIGHT-------
+bool globalLightState = false;
+float globalLightBrightness = 0;
 
   //-------FUNCTION PROTOTYPES-------
   //remove function prototypes
@@ -60,9 +64,9 @@ class ServoSmartSwitch : public Component, public LightOutput {
     servoRotate.detach();
 
     btnState = digitalRead(encoderPinBtn);
-    currentStateA = digitalRead(encoderPinA);
+  // currentStateA = digitalRead(encoderPinA);
 
-    register_service(&ServoSmartSwitch::turn_on, true);
+    // register_service(&ServoSmartSwitch::turn_on, true);
 
   }
 
@@ -89,11 +93,11 @@ class ServoSmartSwitch : public Component, public LightOutput {
     // Write red, green and blue to HW
     // ...
     // float brightness2;
-    state->current_values_as_brightness(&lightBrightness);
+    state->current_values_as_brightness(&globalLightBrightness);
     // brightness2 = brightness;
-    state->lightSetBrightness(lightBrightness);
+    lightSetBrightness(globalLightBrightness);
 
-    state->
+    // state->
     //if state has changed, call function for servo push
 
   }
@@ -116,7 +120,7 @@ class ServoSmartSwitch : public Component, public LightOutput {
       btnState = !btnState;    //toggle the button state
       Serial.print("Button state = ");
       Serial.println(btnState);
-      lightSetState(!lightState);    //toggle the light
+      lightSetState(!globalLightState);    //toggle the light
       msDebounceTimer = millis();       //restart debounce timer to break out of statement
     }
     prevBtnReading = nowReading;    //save the nowReading. Next time through the loop, it'll be the prevBtnReading:
@@ -150,24 +154,24 @@ class ServoSmartSwitch : public Component, public LightOutput {
 
   void lightSetState(bool state)
   {
-    if(state != lightState)
+    if(state != globalLightState)   //if light is getting toggled. ignore if state command is same as current state
     {
       // digitalWrite(MOSFET, HIGH);   //turns on power to the servos
       servoPush.attach(servoPinPush);
       servoPush.write(servoLocationPush);
-      delay(500);
+      delay(600);
       servoPush.write(servoLocationHome);
-      lightState = state;
       // digitalWrite(MOSFET, LOW);    //turns off power to the servos
       servoPush.detach();
+      globalLightState = state;
     }
   }
 
-  void lightChangeBrightness(int change)
+  void lightChangeBrightness(float change)
   {
-    if(lightBrightness + change > 100)    //if the encoder is rotated to increase brightness beyond 100
+    if(globalLightBrightness + change > 100)    //if the encoder is rotated to increase brightness beyond 100
       lightSetBrightness(100);          //set brightness to 100
-    else if(lightBrightness + change < 0)
+    else if(globalLightBrightness + change < 0)
       lightSetBrightness(0);
 
     servoRotate.attach(servoPinRotate);
@@ -180,14 +184,37 @@ class ServoSmartSwitch : public Component, public LightOutput {
     servoRotate.write(90);    //stops the motor
     servoRotate.detach();
 
-    lightBrightness += change;    //updates global brightness variable
+    globalLightBrightness += change;    //updates global brightness variable
   }
 
-  void lightSetBrightness(unsigned int brightness)
+  void lightSetBrightness(float brightness)
   {
-    if(brightness > 100)
+    if(brightness >= 100)
       brightness = 100;
-    lightChangeBrightness(brightness - lightBrightness);
+    else if(brightness < 0)
+      brightness = 0;
+    
+    if((brightness == 0))       //if brightness is set to 0 and the light is currently on
+    {
+      lightSetState(false);
+      // globalLightState = false;
+    }
+    else if((brightness != globalLightBrightness) || ((brightness > 0) && !globalLightState) )   //if brightness has changed while light is on, OR, if light is off when a brightness value is gived
+    {
+      lightSetState(true);    //make sure light is on
+      lightChangeBrightness(brightness - globalLightBrightness);
+    }
+
+      //break; dont rotate servo
+
+    //if OFF and changed, turn on, adjust lights
+    //if ON and less than 0, turn off
+    //update global value
+    
+
+    Serial.print("Light state: ");
+    Serial.println(globalLightState);
+    
   }
 
 
