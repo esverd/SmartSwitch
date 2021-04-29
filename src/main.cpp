@@ -6,8 +6,8 @@
 //-------ROTARY ENCODER-------
 int encoderPinA = 14;   //5  D5
 int encoderPinB = 16;   //4  D0
-int encoderVal = 0;
-int encoderClickValue = 1;
+float encoderVal = 0.0;
+float encoderClickValue = 0.5;
 bool prevStateA = true;
 bool currentStateA = true;
 unsigned long msWaitBeforeServoStart = 500;
@@ -30,9 +30,9 @@ int servoLocationHome = 90;
 //-------SERVO ROTATE CONFIG-------
 int servoPinRotate = 5; //14
 Servo servoRotate;
-int servoIncreaseBrightness = 100;
-int servoDecreaseBrightness = 80;
-unsigned long servoRotateTimeConstant = 100;    //in milliseconds
+int servoIncreaseBrightness = 100;    //speed for rotation
+int servoDecreaseBrightness = 80;     //speed for rotation
+unsigned long servoRotateTimeConstant = 100;    //in milliseconds. multiplied by envoderVal to get total time for motor to rotate
 
 //-------PIN I/O-------
 // int MOSFET = 13; //7
@@ -42,6 +42,34 @@ unsigned long servoRotateTimeConstant = 100;    //in milliseconds
 bool globalLightState = false;
 float globalLightBrightness = 0;
 
+//-------------MQTT Settings------------- 
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h>
+
+// Update these with values suitable for your network.
+
+const char* ssid = "";
+const char* password = "";
+const char* mqtt_server = "192.168.1.101";
+const char* mqttUser = "";
+const char* mqttPwd = "";
+const char* command_topic = "smartswitch/set";     //subscribe
+    // payload_on: "ON"
+    // payload_off: "OFF"
+const char* state_topic = "smartswitch/state/status";    //publish
+const char* brightness_command_topic = "smartswitch/brightness";   //subscribe
+const char* brightness_state_topic = "smartswitch/state/brightness";    //publish
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+unsigned long lastMsg = 0;
+#define MSG_BUFFER_SIZE	(50)
+char msg[MSG_BUFFER_SIZE];
+int value = 0;
+
+
+
+
 
 //-------FUNCTION PROTOTYPES-------
 void checkEncoderBtn();
@@ -50,6 +78,12 @@ void lightSetState(bool);
 void lightChangeBrightness(float);
 void lightSetBrightness(float);
 void readSerial();
+
+void setup_wifi();
+void callback(char*, byte*, unsigned int);
+void reconnect();
+void sendStates();
+
 
 void setup()
 {
@@ -70,6 +104,13 @@ void setup()
   btnState = digitalRead(encoderPinBtn);
   // currentStateA = digitalRead(encoderPinA);
 
+  //MQTT
+  setup_wifi();
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
+
+  //publish globalLightState and globalLightBrightness to state_topic
+  //call function for doing this
 }
 
 void loop() 
@@ -78,8 +119,27 @@ void loop()
   checkEncoderRotation();
 
   readSerial();
+
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+
+  // unsigned long now = millis();
+  // if (now - lastMsg > 2000) {
+  //   lastMsg = now;
+  //   ++value;
+  //   snprintf (msg, MSG_BUFFER_SIZE, "hello world #%ld", value);
+  //   Serial.print("Publish message: ");
+  //   Serial.println(msg);
+  //   client.publish("outTopic/test", msg);
+  // }
   
 }
+
+//updateState()
+//called every time dimmer is changed with encoder
+
 
 void checkEncoderBtn()
 {
@@ -138,15 +198,20 @@ void lightSetState(bool state)
     // digitalWrite(MOSFET, LOW);    //turns off power to the servos
     servoPush.detach();
     globalLightState = state;
+
+    sendStates();   //publish state change to MQTT
   }
 }
 
 void lightChangeBrightness(float change)
 {
+  if(!globalLightState)
+    lightSetState(true);    //make sure light is on
+
   if(globalLightBrightness + change > 100)    //if the encoder is rotated to increase brightness beyond 100
-    lightSetBrightness(100);          //set brightness to 100
-  else if(globalLightBrightness + change < 0)
-    lightSetBrightness(0);
+    change = 100 - globalLightBrightness;         //set brightness to 100
+  else if(globalLightBrightness + change < 0)     //if the change would give negative brightness
+    change = -globalLightBrightness;      //decrease to 0 brightness
 
   servoRotate.attach(servoPinRotate);
   if(change > 0)
@@ -159,6 +224,8 @@ void lightChangeBrightness(float change)
   servoRotate.detach();
 
   globalLightBrightness += change;    //updates global brightness variable
+  
+  sendStates();   //publish state change to MQTT
 }
 
 void lightSetBrightness(float brightness)
@@ -168,16 +235,19 @@ void lightSetBrightness(float brightness)
   else if(brightness < 0)
     brightness = 0;
   
-  if((brightness == 0))       //if brightness is set to 0 and the light is currently on
-  {
-    lightSetState(false);
-    // globalLightState = false;
-  }
-  else if((brightness != globalLightBrightness) || ((brightness > 0) && !globalLightState) )   //if brightness has changed while light is on, OR, if light is off when a brightness value is gived
-  {
-    lightSetState(true);    //make sure light is on
+  // if((brightness == 0))       //if brightness is set to 0 and the light is currently on
+  // {
+  //   lightSetState(false);
+  //   // globalLightState = false;
+  // }
+  // else if((brightness != globalLightBrightness) || ((brightness > 0) && !globalLightState) )   //if brightness has changed while light is on, OR, if light is off when a brightness value is gived
+  // {
+  //   lightSetState(true);    //make sure light is on
+  //   lightChangeBrightness(brightness - globalLightBrightness);
+  // }
+
+  if(brightness != globalLightBrightness)
     lightChangeBrightness(brightness - globalLightBrightness);
-  }
 
     //break; dont rotate servo
 
@@ -223,13 +293,101 @@ void readSerial()
 
 }
 
-// if(cmdBuffer.indexOf("G1") != -1 || cmdBuffer.indexOf("G01") != -1)
-//   {
-//     if(cmdBuffer.indexOf("X") != -1 || cmdBuffer.indexOf("Y") != -1 || cmdBuffer.indexOf("Z") != -1)
-//       G1xyz();   //moves the robot to the given coordinates
-//     else if(cmdBuffer.indexOf("L") != -1 || cmdBuffer.indexOf("R") != -1)
-//       G1lr();
-//   }
+void callback(char* topic, byte* payload, unsigned int length) 
+// void callback(char* topic, char* payload, unsigned int length) 
+{
+  String payloadString = "";
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
+    payloadString += (char)payload[i];
+  }
+  Serial.println();
 
-//   if(yVal.toFloat() != -1)
-//         currentY = yVal.toFloat();
+  // // Switch on the LED if an 1 was received as first character
+  // if ((char)payload[0] == '1') {
+  //   digitalWrite(BUILTIN_LED, LOW);   // Turn the LED on (Note that LOW is the voltage level
+  //   // but actually the LED is on; this is because
+  //   // it is active low on the ESP-01)
+  // } else {
+  //   digitalWrite(BUILTIN_LED, HIGH);  // Turn the LED off by making the voltage HIGH
+  // }
+
+  //act on command here
+  //if topic
+  //if payload
+  //Message arrived [smartswitch/test] on
+
+  if(String(topic) == command_topic)
+  {
+    if(payloadString == "ON")
+      lightSetState(true);
+    else if(payloadString == "OFF")
+      lightSetState(false);
+  }
+  else if(String(topic) == brightness_command_topic)
+  {
+    lightSetBrightness(payloadString.toFloat());
+  }
+
+}
+
+void sendStates()
+{
+  if(globalLightState)
+    client.publish(state_topic, "ON");
+  else 
+    client.publish(state_topic, "OFF");
+  
+  client.publish(brightness_state_topic, String(globalLightBrightness).c_str());
+}
+
+void reconnect() 
+{
+  while (!client.connected())   // Loop until we're reconnected
+  {
+    Serial.print("Attempting MQTT connection...");
+    if (client.connect("ESP8266Client", mqttUser, mqttPwd ))    // Attempt to connect
+    {
+      Serial.println("connected");
+      // client.publish("outTopic", "hello world");   // Once connected, publish an announcement...
+      //and resubscribe
+      client.subscribe(command_topic);
+      client.subscribe(brightness_command_topic);
+    } 
+    else 
+    {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      delay(5000);    // Wait 5 seconds before retrying
+    }
+  }
+}
+
+
+void setup_wifi() 
+{
+  delay(10);
+  // We start by connecting to a WiFi network
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  randomSeed(micros());
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+}
