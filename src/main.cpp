@@ -41,7 +41,7 @@ unsigned long servoRotateTimeConstant = 100;    //in milliseconds. multiplied by
 bool globalLightState = false;
 float globalLightBrightness = 0;
 
-//-------------MQTT Settings------------- 
+//-------MQTT SETTINGS------- 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 const char* ssid = CREDS_WIFI_SSID;   //replace with your ssid
@@ -62,6 +62,13 @@ char msg[MSG_BUFFER_SIZE];
 int value = 0;
 
 
+//-------OTA SETTINGS-------
+#include <ESP8266mDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
+
+
+
 //-------FUNCTION PROTOTYPES-------
 void checkEncoderBtn();
 void checkEncoderRotation();
@@ -69,10 +76,11 @@ void lightSetState(bool);
 void lightChangeBrightness(float);
 void lightSetBrightness(float);
 void readSerial();
-void setup_wifi();
+void setupWifi();
 void callback(char*, byte*, unsigned int);    //being called each time a MQTT message is received
 void reconnect();
 void sendStates();    //transfers the global states to home assistant over MQTT
+void setupOTA();
 
 
 void setup()
@@ -94,22 +102,24 @@ void setup()
   btnState = digitalRead(encoderPinBtn);
   // currentStateA = digitalRead(encoderPinA);
 
-  setup_wifi();
-  client.setServer(mqtt_server, 1883);
-  client.setCallback(callback);
+  setupWifi();    //connect to wifi
+  setupOTA();     //set up OTA code upload
+  client.setServer(mqtt_server, 1883);    //connect to MQTT server
+  client.setCallback(callback);     //handle incoming MQTT messages  
 }
 
 void loop() 
 {
-  // readSerial();
+  ArduinoOTA.handle();
 
-  if (!client.connected()) 
-    reconnect();
+  // if (!client.connected()) 
+  //   reconnect();
 
   client.loop();
 
   checkEncoderBtn();
   checkEncoderRotation();
+  // readSerial();
 }
 
 void checkEncoderBtn()
@@ -269,7 +279,7 @@ void reconnect()
   }
 }
 
-void setup_wifi() 
+void setupWifi() 
 {
   delay(10);
   // We start by connecting to a WiFi network
@@ -291,6 +301,54 @@ void setup_wifi()
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
+}
+
+void setupOTA()
+{
+  ArduinoOTA.setHostname("ESP8266-SmartSwitch");
+  ArduinoOTA.setPassword("ESPOTA");    // No authentication by default
+
+  ArduinoOTA.onStart([]() 
+  {
+    String type;
+    if (ArduinoOTA.getCommand() == U_FLASH) {
+      type = "sketch";
+    } else { // U_FS
+      type = "filesystem";
+    }
+
+    Serial.println("Start updating " + type);
+  });
+
+  ArduinoOTA.onEnd([]() 
+  {
+    Serial.println("\nEnd");
+  });
+
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) 
+  {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+
+  ArduinoOTA.onError([](ota_error_t error) 
+  {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) 
+      Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) 
+      Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) 
+      Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) 
+      Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) 
+      Serial.println("End Failed");
+  });
+
+  ArduinoOTA.begin();
+  Serial.println("Ready");
+  // Serial.print("IP address: ");
+  // Serial.println(WiFi.localIP());
 }
 
 
