@@ -5,7 +5,7 @@
 
 //-------ROTARY ENCODER-------
 int encoderPinA = 14;   //5  D5
-int encoderPinB = 16;   //4  D0
+int encoderPinB = 13;   //16;   //4  D0
 float encoderVal = 0.0;   //the value being changed by the encoder as it rotates
 float encoderClickValue = 0.5;    //how much to change the brightness with one "click" on the encoder
 bool prevStateA = true;
@@ -81,7 +81,7 @@ void setup()
   Serial.println("Starting");
 
   pinMode(encoderPinA, INPUT_PULLUP);
-  pinMode(encoderPinB, INPUT);
+  pinMode(encoderPinB, INPUT_PULLUP);
   pinMode(encoderPinBtn, INPUT_PULLUP);
 
   servoPush.attach(servoPinPush);
