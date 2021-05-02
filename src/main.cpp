@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <Servo.h>
+#include <WIFI_CREDS.h>     //remove this in your code. i just used it to keep various credentials secret on github
 
 
 //-------ROTARY ENCODER-------
@@ -43,11 +44,11 @@ float globalLightBrightness = 0;
 //-------------MQTT Settings------------- 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-const char* ssid = "";
-const char* password = "";
+const char* ssid = CREDS_WIFI_SSID;   //replace with your ssid
+const char* password = CREDS_WIFI_PWD;  //replace with your wifi password
 const char* mqtt_server = "192.168.1.101";
-const char* mqttUser = "";
-const char* mqttPwd = "";
+const char* mqttUser = CREDS_MQTT_USER;   //replace with your mqtt server user
+const char* mqttPwd = CREDS_MQTT_PWD;     //replace with your mqtt server user password
 const char* command_topic = "smartswitch/set";     //subscribe
 const char* state_topic = "smartswitch/state/status";    //publish
 const char* brightness_command_topic = "smartswitch/brightness";   //subscribe
