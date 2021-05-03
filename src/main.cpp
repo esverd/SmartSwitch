@@ -50,6 +50,7 @@ const char* command_topic = "smartswitch/set";     //subscribe
 const char* state_topic = "smartswitch/state/status";    //publish
 const char* brightness_command_topic = "smartswitch/brightness";   //subscribe
 const char* brightness_state_topic = "smartswitch/state/brightness";    //publish
+const char* brightness_override_topic = "smartswitch/override/brightness";   //subscribe. to manually set the brightness state without change from servo
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -239,6 +240,13 @@ void callback(char* topic, byte* payload, unsigned int length)
   }
   else if(String(topic) == brightness_command_topic)
     lightSetBrightness(payloadString.toFloat());
+  else if(String(topic) == brightness_override_topic)
+  {
+    globalLightBrightness = payloadString.toFloat();
+    sendStates();
+  }
+
+
 
 }
 
@@ -262,6 +270,7 @@ void reconnect()
       Serial.println("connected");
       client.subscribe(command_topic);
       client.subscribe(brightness_command_topic);
+      client.subscribe(brightness_override_topic);
     } 
     else 
     {
