@@ -10,7 +10,7 @@ float encoderVal = 0.0;   //the value being changed by the encoder as it rotates
 float encoderClickValue = 0.5;    //how much to change the brightness with one "click" on the encoder
 bool prevStateA = true;
 bool currentStateA = true;
-unsigned long msWaitBeforeServoStart = 500;   //delay after encoder has finished rotating before starting to move the servo
+unsigned long msWaitBeforeServoStart = 600;   //delay after encoder has finished rotating before starting to move the servo
 unsigned long msWaitServoTimer = 0;
 bool goingToRotate = false;
 
@@ -24,8 +24,8 @@ const unsigned long debounceDelay = 100;    // the debounce time; increase if th
 //-------SERVO PUSH CONFIG-------
 int servoPinPush = 4; //13
 Servo servoPush;
-int servoLocationPush = 160;    //from testing: 175;
-int servoLocationHome = 90;
+int servoLocationPush = 150;    //from testing: 175;
+int servoLocationHome = 120;
 
 //-------SERVO ROTATE CONFIG-------
 int servoPinRotate = 5; //14
@@ -33,9 +33,6 @@ Servo servoRotate;
 int servoIncreaseBrightness = 100;    //speed for rotation
 int servoDecreaseBrightness = 80;     //speed for rotation
 unsigned long servoRotateTimeConstant = 100;    //in milliseconds. multiplied by envoderVal to get total time for motor to rotate
-
-//-------PIN I/O-------
-// int MOSFET = 13; //7
 
 //-------LIGHT-------
 bool globalLightState = false;
@@ -61,13 +58,10 @@ unsigned long lastMsg = 0;
 char msg[MSG_BUFFER_SIZE];
 int value = 0;
 
-
 //-------OTA SETTINGS-------
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
-
-
 
 //-------FUNCTION PROTOTYPES-------
 void checkEncoderBtn();
@@ -112,8 +106,8 @@ void loop()
 {
   ArduinoOTA.handle();
 
-  // if (!client.connected()) 
-  //   reconnect();
+  if (!client.connected()) 
+    reconnect();
 
   client.loop();
 
@@ -175,7 +169,7 @@ void lightSetState(bool state)
     servoPush.write(servoLocationPush);
     delay(800);
     servoPush.write(servoLocationHome);
-    delay(200);
+    delay(100);
     // digitalWrite(MOSFET, LOW);    //turns off power to the servos
     servoPush.detach();
     globalLightState = state;
