@@ -24,19 +24,20 @@ const unsigned long debounceDelay = 100;    // the debounce time; increase if th
 //-------SERVO PUSH CONFIG-------
 int servoPinPush = 4; //13
 Servo servoPush;
-int servoLocationPush = 150;    //from testing: 175;
+int servoLocationPush = 168;    //from testing: 175;
 int servoLocationHome = 120;
+int servoPushPrevLocation;
 
 //-------SERVO ROTATE CONFIG-------
 int servoPinRotate = 5; //14
 Servo servoRotate;
-int servoIncreaseBrightness = 100;    //speed for rotation
-int servoDecreaseBrightness = 80;     //speed for rotation
+int servoIncreaseBrightness = 80;    //speed for rotation
+int servoDecreaseBrightness = 100;     //speed for rotation
 unsigned long servoRotateTimeConstant = 100;    //in milliseconds. multiplied by envoderVal to get total time for motor to rotate
 
 //-------LIGHT-------
 bool globalLightState = false;
-float globalLightBrightness = 0;
+float globalLightBrightness = 100;
 
 //-------MQTT SETTINGS------- 
 #include <ESP8266WiFi.h>
@@ -76,6 +77,7 @@ void callback(char*, byte*, unsigned int);    //being called each time a MQTT me
 void reconnect();
 void sendStates();    //transfers the global states to home assistant over MQTT
 void setupOTA();
+int sweepServoTo(Servo, int, int, int);
 
 
 void setup()
@@ -90,6 +92,8 @@ void setup()
   servoPush.attach(servoPinPush);
   servoPush.write(servoLocationHome);
   servoPush.detach();
+  servoPushPrevLocation = servoLocationHome;
+
   servoRotate.attach(servoPinRotate);
   servoRotate.write(90);
   servoRotate.detach();
@@ -166,13 +170,11 @@ void lightSetState(bool state)
 {
   if(state != globalLightState)   //if light is getting toggled. ignore if state command is same as current state
   {
-    servoPush.attach(servoPinPush);
-    servoPush.write(servoLocationPush);
-    delay(800);
-    servoPush.write(servoLocationHome);
+    servoPushPrevLocation = sweepServoTo(servoPush, servoPushPrevLocation, servoLocationPush, servoPinPush);
     delay(100);
-    // digitalWrite(MOSFET, LOW);    //turns off power to the servos
-    servoPush.detach();
+    servoPushPrevLocation = sweepServoTo(servoPush, servoPushPrevLocation, servoLocationHome, servoPinPush);
+    delay(100);
+
     globalLightState = state;
 
     sendStates();   //publish state change to MQTT
@@ -218,6 +220,22 @@ void lightSetBrightness(float brightness)
   Serial.println(globalLightState);  
 }
 
+int sweepServoTo(Servo inServo, int currentPosition, int destination, int servoPin)
+{
+  inServo.attach(servoPin);
+  while(currentPosition != destination)   //prevents the servo getting told to move to the position it's already in
+  {
+    if(destination > currentPosition)     //100 -> 155
+      currentPosition++;
+    else
+      currentPosition--;
+    inServo.write(currentPosition);     //150 -> 90
+    delay(8);
+  }
+  inServo.detach();
+  return currentPosition;
+}
+
 void callback(char* topic, byte* payload, unsigned int length) 
 {
   String payloadString = "";
@@ -245,8 +263,6 @@ void callback(char* topic, byte* payload, unsigned int length)
     globalLightBrightness = payloadString.toFloat();
     sendStates();
   }
-
-
 
 }
 
