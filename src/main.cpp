@@ -7,7 +7,7 @@
 int encoderPinA = 14;   //5  D5
 int encoderPinB = 13;   //16;   //4  D0
 float encoderVal = 0.0;   //the value being changed by the encoder as it rotates
-float encoderClickValue = 0.5;    //how much to change the brightness with one "click" on the encoder
+long encoderClickValue = 5.0;    //how much to change the brightness with one "click" on the encoder
 bool prevStateA = true;
 bool currentStateA = true;
 unsigned long msWaitBeforeServoStart = 600;   //delay after encoder has finished rotating before starting to move the servo
@@ -33,7 +33,7 @@ int servoPinRotate = 5; //14
 Servo servoRotate;
 int servoIncreaseBrightness = 80;    //speed for rotation
 int servoDecreaseBrightness = 100;     //speed for rotation
-unsigned long servoRotateTimeConstant = 100;    //in milliseconds. multiplied by envoderVal to get total time for motor to rotate
+unsigned long servoRotateTimeConstant = 40;    //23 after calibrating one click at the time    //in milliseconds. multiplied by encoderVal to get total time for motor to rotate
 
 //-------LIGHT-------
 bool globalLightState = false;
@@ -91,11 +91,13 @@ void setup()
 
   servoPush.attach(servoPinPush);
   servoPush.write(servoLocationHome);
+  delay(50);
   servoPush.detach();
   servoPushPrevLocation = servoLocationHome;
 
   servoRotate.attach(servoPinRotate);
   servoRotate.write(90);
+  delay(50);
   servoRotate.detach();
 
   btnState = digitalRead(encoderPinBtn);
@@ -119,6 +121,16 @@ void loop()
   checkEncoderBtn();
   checkEncoderRotation();
   // readSerial();
+
+  // unsigned long timer = millis();
+  // servoRotate.attach(servoPinRotate);
+  // while(!digitalRead(encoderPinBtn))
+  // {
+  //   servoRotate.write(servoDecreaseBrightness);
+  // }
+  // servoRotate.write(servoLocationHome);
+  // client.publish("smartswitch/test", String(millis() - timer).c_str());
+
 }
 
 void checkEncoderBtn()
@@ -171,9 +183,9 @@ void lightSetState(bool state)
   if(state != globalLightState)   //if light is getting toggled. ignore if state command is same as current state
   {
     servoPushPrevLocation = sweepServoTo(servoPush, servoPushPrevLocation, servoLocationPush, servoPinPush);
-    delay(100);
+    delay(50);
     servoPushPrevLocation = sweepServoTo(servoPush, servoPushPrevLocation, servoLocationHome, servoPinPush);
-    delay(100);
+    delay(50);
 
     globalLightState = state;
 
@@ -181,15 +193,22 @@ void lightSetState(bool state)
   }
 }
 
-void lightChangeBrightness(float change)
+void lightChangeBrightness(long change)
 {
   if(!globalLightState)
     lightSetState(true);    //make sure light is on
 
+  unsigned long extraTime = 0;
   if(globalLightBrightness + change > 100)    //if the encoder is rotated to increase brightness beyond 100
+  {
     change = 100 - globalLightBrightness;         //set brightness to 100
+    extraTime = 500;
+  }
   else if(globalLightBrightness + change < 0)     //if the change would give negative brightness
+  {
     change = -globalLightBrightness;      //decrease to 0 brightness
+    extraTime = 500;
+  }
 
   servoRotate.attach(servoPinRotate);
   if(change > 0)
@@ -197,7 +216,7 @@ void lightChangeBrightness(float change)
   else if(change < 0)
     servoRotate.write(servoDecreaseBrightness);
   
-  delay(abs(change)*servoRotateTimeConstant);     //timer for starting the motor to a time corresponding to the changing brightness value
+  delay((abs(change)*servoRotateTimeConstant) + extraTime);     //timer for starting the motor to a time corresponding to the changing brightness value
   servoRotate.write(90);    //stops the motor
   servoRotate.detach();
 
