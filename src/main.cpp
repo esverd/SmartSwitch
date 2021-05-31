@@ -183,7 +183,7 @@ void lightSetState(bool state)
   if(state != globalLightState)   //if light is getting toggled. ignore if state command is same as current state
   {
     servoPushPrevLocation = sweepServoTo(servoPush, servoPushPrevLocation, servoLocationPush, servoPinPush);
-    delay(50);
+    delay(100);
     servoPushPrevLocation = sweepServoTo(servoPush, servoPushPrevLocation, servoLocationHome, servoPinPush);
     delay(50);
 
@@ -193,7 +193,7 @@ void lightSetState(bool state)
   }
 }
 
-void lightChangeBrightness(long change)
+void lightChangeBrightness(float change)
 {
   if(!globalLightState)
     lightSetState(true);    //make sure light is on
