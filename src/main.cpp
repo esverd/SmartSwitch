@@ -7,7 +7,7 @@
 int encoderPinA = 14;   //5  D5
 int encoderPinB = 13;   //16;   //4  D0
 float encoderVal = 0.0;   //the value being changed by the encoder as it rotates
-long encoderClickValue = 5.0;    //how much to change the brightness with one "click" on the encoder
+long encoderClickValue = 4.0;    //how much to change the brightness with one "click" on the encoder
 bool prevStateA = true;
 bool currentStateA = true;
 unsigned long msWaitBeforeServoStart = 600;   //delay after encoder has finished rotating before starting to move the servo
@@ -25,13 +25,13 @@ const unsigned long debounceDelay = 100;    // the debounce time; increase if th
 int servoPinPush = 4; //13
 Servo servoPush;
 int servoLocationPush = 168;    //from testing: 175;
-int servoLocationHome = 120;
+int servoLocationHome = 130;
 int servoPushPrevLocation;
 
 //-------SERVO ROTATE CONFIG-------
 int servoPinRotate = 5; //14
 Servo servoRotate;
-int servoIncreaseBrightness = 80;    //speed for rotation
+int servoIncreaseBrightness = 80;    //speed for rotation. 90 is the middle/still
 int servoDecreaseBrightness = 100;     //speed for rotation
 unsigned long servoRotateTimeConstant = 40;    //23 after calibrating one click at the time    //in milliseconds. multiplied by encoderVal to get total time for motor to rotate
 
